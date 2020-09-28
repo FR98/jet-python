@@ -1,0 +1,2 @@
+class JETException(Exception):
+    pass
