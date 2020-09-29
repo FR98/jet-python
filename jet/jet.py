@@ -55,8 +55,8 @@ class JET:
 
         unsigned_token = '{encoded_meta}.{encrypted_payload}.{encrypted_private_key}.{salt}'.format(
             encoded_meta = encode_dict(meta, self.encoding),
-            encrypted_payload = encrypted_payload.encode(self.encoding),
-            encrypted_private_key = encrypted_private_key.encode(self.encoding),
+            encrypted_payload = encrypted_payload,
+            encrypted_private_key = encrypted_private_key,
             salt = salt
         )
 
@@ -88,7 +88,7 @@ class JET:
     def encrypt_payload(self, payload):
         # RSA_encrypt(payload, self.public_key)
         encoded_payload = encode_dict(payload, self.encoding)
-        return 'encrypted-encoded-payload'
+        return encoded_payload
 
     def decrypt_private_key(self, encrypted_private_key, derived_key):
         # AES_decrypt(encrypted_private_key, derived_key)

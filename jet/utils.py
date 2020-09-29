@@ -1,6 +1,7 @@
 import hmac
 import hashlib
 import json
+import base64
 
 def hmac_sha256(msg, key, encoding):
     return hmac.new(
@@ -9,5 +10,21 @@ def hmac_sha256(msg, key, encoding):
         digestmod = hashlib.sha256
     ).hexdigest()
 
+def stringfy_dict(p_dict):
+    return json.dumps(p_dict)
+
 def encode_dict(p_dict, encoding):
-    return json.dumps(p_dict).encode(encoding)
+    dict_string = stringfy_dict(p_dict)
+    return base64encode(dict_string, encoding)
+
+def base64encode(string, encoding):
+    string_bytes = string.encode(encoding)
+    b64_bytes = base64.b64encode(string_bytes)
+    b64_bytes_string = b64_bytes.decode(encoding)
+    return b64_bytes_string
+
+def base64decode(b64_bytes_string, encoding):
+    b64_bytes = b64_bytes_string.encode(encoding)
+    string_bytes = base64.b64decode(b64_bytes)
+    string = string_bytes.decode(encoding)
+    return string
