@@ -2,7 +2,7 @@ import json
 import os
 from backports.pbkdf2 import pbkdf2_hmac
 
-from jet.utils import hmac_sha256, encode_dict
+from jet.utils import hmac_sha256, encode_dict, base64encode, salt_to_encoded_string
 import jet.exceptions
 
 
@@ -36,10 +36,12 @@ class JET:
         self.exp = exp
 
     def encrypt(self, user_secret, payload, exp=None):
-        # user_secret could be some string derivated from user password (but not the password) because you must keep it on frontend
-        # while session is open to decrypt tokens asociated to that user
-        # Ex: user_secret = hmac_sha256(password, password)
-        #       so you can reproduce this user_secret in frontend
+        """
+        user_secret could be some string derivated from user password (but not the password) because you must keep it on frontend
+        while session is open to decrypt tokens asociated to that user
+        Ex: user_secret = hmac_sha256(password, password)
+              so you can reproduce this user_secret in frontend
+        """
 
         salt = os.urandom(64)
         derived_key = pbkdf2_hmac(self.alg, user_secret.encode(self.encoding), salt, self.iterations, self.derived_key_size)
@@ -57,7 +59,7 @@ class JET:
             encoded_meta = encode_dict(meta, self.encoding),
             encrypted_payload = encrypted_payload,
             encrypted_private_key = encrypted_private_key,
-            salt = salt
+            salt = salt_to_encoded_string(salt, self.encoding)
         )
 
         sign = hmac_sha256(unsigned_token, self.SECRET, self.encoding)
