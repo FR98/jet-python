@@ -3,8 +3,8 @@ from jet.utils import hmac_sha256
 
 
 GLOBAL_JET = JET(
-    public_key = 'my-public-key',
-    private_key = 'my-private-key',
+    # public_key = 'my-public-key',
+    # private_key = 'my-private-key',
     SECRET = 'my-secret-string'
 )
 

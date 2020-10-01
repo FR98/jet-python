@@ -29,8 +29,10 @@ def base64decode(b64_bytes_string, encoding):
     string = string_bytes.decode(encoding)
     return string
 
-def salt_to_encoded_string(salt, encoding):
-    return base64.b64encode(salt).decode(encoding)
+def bytes_to_encoded_string(my_bytes, encoding):
+    # return bytes in string
+    return base64.b64encode(my_bytes).decode(encoding)
 
-def encoded_string_to_salt(string, encoding):
-    return base64.b64decode(string).encode(encoding)
+def encoded_string_to_bytes(string):
+    # return bytes
+    return base64.b64decode(string)
