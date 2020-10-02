@@ -3,8 +3,8 @@ from jet.utils import hmac_sha256
 
 
 GLOBAL_JET = JET(
-    public_key = 'my-public-key',
-    private_key = 'my-private-key',
+    # public_key = 'my-public-key',
+    # private_key = 'my-private-key',
     SECRET = 'my-secret-string'
 )
 
@@ -18,5 +18,7 @@ payload = {
 token = GLOBAL_JET.encrypt(user_secret, payload)
 print(token)
 
-# decrypted_payload = GLOBAL_JET.decrypt(user_secret, token)
-# print(decrypted_payload)
+decrypted_meta, decrypted_payload = GLOBAL_JET.decrypt(user_secret, token)
+print()
+print(decrypted_meta)
+print(decrypted_payload)
