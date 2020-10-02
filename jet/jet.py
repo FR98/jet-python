@@ -1,8 +1,7 @@
 import os
 import json
 from backports.pbkdf2 import pbkdf2_hmac
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 
 import jet.exceptions
@@ -56,8 +55,6 @@ class JET:
             self.public_exponent = None
         else:
             self.generate_keys()
-        
-        # print('PK: ', bytes_to_encoded_string(self.public_key.public_bytes(serialization.Encoding.DER, serialization.PublicFormat.PKCS1), self.encoding))
 
     def generate_keys(self):
         default_public_exponent = 65537
@@ -77,16 +74,22 @@ class JET:
         """
 
         salt = os.urandom(self.derived_key_size)
-        derived_key = pbkdf2_hmac(self.alg, user_secret.encode(self.encoding), salt, self.iterations, self.derived_key_size)
+        derived_key = pbkdf2_hmac(
+            self.alg,
+            user_secret.encode(self.encoding),
+            salt,
+            self.iterations,
+            self.derived_key_size
+        )
 
         meta = {
-            'rnd': bytes_to_encoded_string(os.urandom(self.derived_key_size // 4), self.encoding),
+            'rnd': self.random_string(),
             'alg': self.alg,
             'typ': self.typ,
             'exp': exp or self.exp
         }
 
-        payload['rnd'] = bytes_to_encoded_string(os.urandom(self.derived_key_size // 4), self.encoding)
+        payload['rnd'] = self.random_string()
         encrypted_payload = self.encrypt_payload(payload)
         encrypted_private_key = self.encrypt_private_key(derived_key)
 
@@ -109,15 +112,27 @@ class JET:
         salt = encoded_string_to_bytes(encoded_salt)
 
         meta = encoded_string_to_bytes(encoded_meta)
-        derived_key = pbkdf2_hmac(self.alg, user_secret.encode(self.encoding), salt, self.iterations, self.derived_key_size)
+        derived_key = pbkdf2_hmac(
+            self.alg,
+            user_secret.encode(self.encoding),
+            salt,
+            self.iterations,
+            self.derived_key_size
+        )
         private_key = self.decrypt_private_key(encrypted_private_key, derived_key)
         payload = self.decrypt_payload(encrypted_encoded_payload, private_key)
 
         return meta, payload
 
-    # @property
-    # def payload(self):
-    #     pass
+    @property
+    def plain_public_key(self):
+        return bytes_to_encoded_string(
+            self.public_key.public_bytes(
+                serialization.Encoding.DER,
+                serialization.PublicFormat.PKCS1
+            ),
+            self.encoding
+        )
 
     def encrypt_private_key(self, derived_key):
         # encrypt(self.private_key, derived_key)
@@ -171,3 +186,9 @@ class JET:
             )
         )
         return encoded_payload
+
+    def random_string(self):
+        return bytes_to_encoded_string(
+            os.urandom(self.derived_key_size // 5),
+            self.encoding
+        )
