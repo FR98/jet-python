@@ -80,13 +80,13 @@ class JET:
         derived_key = pbkdf2_hmac(self.alg, user_secret.encode(self.encoding), salt, self.iterations, self.derived_key_size)
 
         meta = {
-            'rnd': bytes_to_encoded_string(os.urandom(self.derived_key_size), self.encoding),
+            'rnd': bytes_to_encoded_string(os.urandom(self.derived_key_size // 4), self.encoding),
             'alg': self.alg,
             'typ': self.typ,
             'exp': exp or self.exp
         }
 
-        payload['rnd'] = bytes_to_encoded_string(os.urandom(self.derived_key_size), self.encoding)
+        payload['rnd'] = bytes_to_encoded_string(os.urandom(self.derived_key_size // 4), self.encoding)
         encrypted_payload = self.encrypt_payload(payload)
         encrypted_private_key = self.encrypt_private_key(derived_key)
 
@@ -105,14 +105,15 @@ class JET:
         )
 
     def decrypt(self, user_secret, token):
-        encoded_meta, encrypted_payload, encrypted_private_key, salt, sign = token.split('.')
+        encoded_meta, encrypted_encoded_payload, encrypted_private_key, encoded_salt, sign = token.split('.')
+        salt = encoded_string_to_bytes(encoded_salt)
 
+        meta = encoded_string_to_bytes(encoded_meta)
         derived_key = pbkdf2_hmac(self.alg, user_secret.encode(self.encoding), salt, self.iterations, self.derived_key_size)
-
         private_key = self.decrypt_private_key(encrypted_private_key, derived_key)
-        payload = self.decrypt_payload(encrypted_payload, private_key)
+        payload = self.decrypt_payload(encrypted_encoded_payload, private_key)
 
-        return payload
+        return meta, payload
 
     # @property
     # def payload(self):
@@ -124,8 +125,8 @@ class JET:
             self.private_key.private_bytes(
                 encoding = serialization.Encoding.DER,
                 format = serialization.PrivateFormat.PKCS8,
-                # encryption_algorithm = serialization.BestAvailableEncryption(derived_key)
-                encryption_algorithm = serialization.NoEncryption()
+                encryption_algorithm = serialization.BestAvailableEncryption(derived_key)
+                # encryption_algorithm = serialization.NoEncryption()
             ),
             self.encoding
         )
@@ -147,10 +148,26 @@ class JET:
         return bytes_to_encoded_string(encrypted_payload, self.encoding)
 
     def decrypt_private_key(self, encrypted_private_key, derived_key):
-        # AES_decrypt(encrypted_private_key, derived_key)
-        return 'dencrypted-private-key'
+        # decrypt(encrypted_private_key, derived_key)
+        private_key = serialization.load_der_private_key(
+            encoded_string_to_bytes(encrypted_private_key),
+            password = derived_key
+            # password = None
+        )
 
-    def decrypt_payload(self, encrypted_payload, private_key):
+        # print(isinstance(private_key, rsa.RSAPrivateKey))
+        return private_key
+
+    def decrypt_payload(self, encrypted_encoded_payload, private_key):
         # RSA_decrypt(encrypted_payload, private_key)
-        # encoded_payload = encode_dict(payload, self.encoding)
-        return 'dencrypted-encoded-payload'
+        encoded_payload = private_key.decrypt(
+            encoded_string_to_bytes(encrypted_encoded_payload),
+            padding.OAEP(
+                mgf = padding.MGF1(
+                    algorithm = hashes.SHA256(),
+                ),
+                algorithm = hashes.SHA256(),
+                label = None
+            )
+        )
+        return encoded_payload
