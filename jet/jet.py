@@ -8,12 +8,11 @@ import jet.exceptions
 from jet.utils import (
     hmac_sha256,
     encode_dict,
+    decode_dict,
     base64encode,
     base64decode,
     bytes_to_encoded_string,
-    stringfy_dict,
-    encoded_string_to_bytes,
-    bytes_to_encoded_string
+    encoded_string_to_bytes
 )
 
 
@@ -111,7 +110,7 @@ class JET:
         encoded_meta, encrypted_encoded_payload, encrypted_private_key, encoded_salt, sign = token.split('.')
         salt = encoded_string_to_bytes(encoded_salt)
 
-        meta = encoded_string_to_bytes(encoded_meta)
+        meta = decode_dict(encoded_meta, self.encoding)
         derived_key = pbkdf2_hmac(
             self.alg,
             user_secret.encode(self.encoding),
@@ -120,7 +119,9 @@ class JET:
             self.derived_key_size
         )
         private_key = self.decrypt_private_key(encrypted_private_key, derived_key)
-        payload = self.decrypt_payload(encrypted_encoded_payload, private_key)
+        payload_bytes = self.decrypt_payload(encrypted_encoded_payload, private_key)
+        encoded_payload = bytes_to_encoded_string(payload_bytes, self.encoding)
+        payload = decode_dict(encoded_payload, self.encoding)
 
         return meta, payload
 
