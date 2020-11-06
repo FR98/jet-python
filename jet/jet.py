@@ -4,7 +4,7 @@ from backports.pbkdf2 import pbkdf2_hmac
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 
-import jet.exceptions
+from jet.exceptions import JETException
 from jet.utils import (
     hmac_sha256,
     encode_dict,
@@ -83,8 +83,10 @@ class JET:
 
         meta = {
             'rnd': self.random_string(),
-            'alg': self.alg,
             'typ': self.typ,
+            'alg': self.alg,
+            'ite': self.iterations,
+            'siz': self.derived_key_size,
             'exp': exp or self.exp
         }
 
@@ -122,6 +124,18 @@ class JET:
         payload_bytes = self.decrypt_payload(encrypted_encoded_payload, private_key)
         encoded_payload = bytes_to_encoded_string(payload_bytes, self.encoding)
         payload = decode_dict(encoded_payload, self.encoding)
+
+        return meta, payload
+
+    def decrypt_from_PK(self, token):
+        try:
+            encoded_meta, encrypted_encoded_payload, encrypted_private_key, encoded_salt, sign = token.split('.')
+            meta = decode_dict(encoded_meta, self.encoding)
+            payload_bytes = self.decrypt_payload(encrypted_encoded_payload, self.private_key)
+            encoded_payload = bytes_to_encoded_string(payload_bytes, self.encoding)
+            payload = decode_dict(encoded_payload, self.encoding)
+        except:
+            raise JETException
 
         return meta, payload
 
