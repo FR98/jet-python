@@ -1,5 +1,6 @@
 import os
 import json
+import hmac
 from backports.pbkdf2 import pbkdf2_hmac
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
@@ -109,6 +110,9 @@ class JET:
         )
 
     def decrypt(self, user_secret, token):
+        if not self.is_valid_token(token):
+            raise JETException
+
         encoded_meta, encrypted_encoded_payload, encrypted_private_key, encoded_salt, sign = token.split('.')
         salt = encoded_string_to_bytes(encoded_salt)
 
@@ -138,6 +142,55 @@ class JET:
             raise JETException
 
         return meta, payload
+    
+    def is_valid_token(self, token):
+        encoded_meta, encrypted_encoded_payload, encrypted_private_key, encoded_salt, sign = token.split('.')
+
+        unsigned_token = '{encoded_meta}.{encrypted_payload}.{encrypted_private_key}.{salt}'.format(
+            encoded_meta = encoded_meta,
+            encrypted_payload = encrypted_encoded_payload,
+            encrypted_private_key = encrypted_private_key,
+            salt = encoded_salt
+        )
+
+        calculated_sign = hmac_sha256(unsigned_token, self.SECRET, self.encoding)
+
+        if hmac.compare_digest(sign, calculated_sign):
+            return True
+        return False
+    
+    def refresh_token(self, token):
+        if not self.is_valid_token(token):
+            raise JETException
+
+        encoded_meta, encrypted_encoded_payload, encrypted_private_key, encoded_salt, sign = token.split('.')
+
+        # Decrypt and update meta
+        meta = decode_dict(encoded_meta, self.encoding)
+        meta['rnd'] = self.random_string()
+        meta['exp'] = self.exp
+
+        # Decrypt, update and encrypte payload
+        payload_bytes = self.decrypt_payload(encrypted_encoded_payload, self.private_key)
+        encoded_payload = bytes_to_encoded_string(payload_bytes, self.encoding)
+        payload = decode_dict(encoded_payload, self.encoding)
+        payload['rnd'] = self.random_string()
+        encrypted_payload = self.encrypt_payload(payload)
+
+        unsigned_token = '{encoded_meta}.{encrypted_payload}.{encrypted_private_key}.{salt}'.format(
+            encoded_meta = encode_dict(meta, self.encoding),
+            encrypted_payload = encrypted_payload,
+            encrypted_private_key = encrypted_private_key,
+            salt = encoded_salt
+        )
+
+        sign = hmac_sha256(unsigned_token, self.SECRET, self.encoding)
+
+        return '{unsigned_token}.{sign}'.format(
+            unsigned_token = unsigned_token,
+            sign = sign
+        )
+
 
     @property
     def plain_public_key(self):
@@ -150,7 +203,7 @@ class JET:
         )
 
     def encrypt_private_key(self, derived_key):
-        # encrypt(self.private_key, derived_key)
+        # Symmetric encryption
         return bytes_to_encoded_string(
             self.private_key.private_bytes(
                 encoding = serialization.Encoding.DER,
@@ -162,7 +215,7 @@ class JET:
         )
 
     def encrypt_payload(self, payload):
-        # RSA_encrypt(payload, self.public_key)
+        # Asymmetric encryption
         encrypted_payload = self.public_key.encrypt(
             encoded_string_to_bytes(
                 encode_dict(payload, self.encoding)
@@ -178,18 +231,19 @@ class JET:
         return bytes_to_encoded_string(encrypted_payload, self.encoding)
 
     def decrypt_private_key(self, encrypted_private_key, derived_key):
-        # decrypt(encrypted_private_key, derived_key)
+        # Symmetric decryption
         private_key = serialization.load_der_private_key(
             encoded_string_to_bytes(encrypted_private_key),
             password = derived_key
             # password = None
         )
 
-        # print(isinstance(private_key, rsa.RSAPrivateKey))
+        if not isinstance(private_key, rsa.RSAPrivateKey):
+            raise JETException
         return private_key
 
     def decrypt_payload(self, encrypted_encoded_payload, private_key):
-        # RSA_decrypt(encrypted_payload, private_key)
+        # Asymmetric decryption
         encoded_payload = private_key.decrypt(
             encoded_string_to_bytes(encrypted_encoded_payload),
             padding.OAEP(

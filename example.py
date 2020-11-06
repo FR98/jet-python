@@ -3,8 +3,6 @@ from jet.utils import hmac_sha256
 
 
 GLOBAL_JET = JET(
-    # public_key = 'my-public-key',
-    # private_key = 'my-private-key',
     SECRET = 'my-secret-string'
 )
 
@@ -28,6 +26,12 @@ print(decrypted_payload['message'])
 decrypted_meta, decrypted_payload = GLOBAL_JET.decrypt_from_PK(token)
 print()
 print(decrypted_meta)
-print(decrypted_meta['rnd'])
 print(decrypted_payload)
-print(decrypted_payload['message'])
+
+print()
+
+verified_sign = GLOBAL_JET.is_valid_token(token)
+print("Token is valid? ", verified_sign)
+
+new_token = GLOBAL_JET.refresh_token(token)
+print("Token == New Token ", token == new_token)
