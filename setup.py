@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="json-encrypted-token",
-    version="0.0.4",
+    version="0.0.5",
     author="Francisco Rosal",
     author_email="frangrosalo@hotmail.com",
     description="JET - JSON Encrypted Token",
@@ -22,7 +22,6 @@ setuptools.setup(
         'backports.pbkdf2==0.1',
         'cffi==1.14.3',
         'cryptography==3.1.1',
-        'pkg-resources==0.0.0',
         'pycparser==2.20',
         'six==1.15.0',
     ],
