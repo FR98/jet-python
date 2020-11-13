@@ -202,17 +202,42 @@ class JET:
             self.encoding
         )
 
-    def encrypt_private_key(self, derived_key):
-        # Symmetric encryption
+    @property
+    def __plain_private_key(self):
         return bytes_to_encoded_string(
             self.private_key.private_bytes(
                 encoding = serialization.Encoding.DER,
                 format = serialization.PrivateFormat.PKCS8,
-                encryption_algorithm = serialization.BestAvailableEncryption(derived_key)
-                # encryption_algorithm = serialization.NoEncryption()
+                encryption_algorithm = serialization.NoEncryption()
+                # encryption_algorithm = serialization.BestAvailableEncryption(derived_key)
             ),
             self.encoding
         )
+
+    def get_private_key_serialized(self, plain_pk, derived_key=None):
+        private_key = serialization.load_der_private_key(
+            encoded_string_to_bytes(plain_pk),
+            password = None
+            # password = derived_key
+        )
+
+        if not isinstance(private_key, rsa.RSAPrivateKey):
+            raise JETException
+        return private_key
+
+    def encrypt_private_key(self, derived_key):
+        # Symmetric encryption
+        plain_pk = self.__plain_private_key
+        # TODO: Encriptar aqui
+        encrypted_private_key = plain_pk
+        return encrypted_private_key
+
+    def decrypt_private_key(self, encrypted_private_key, derived_key):
+        # Symmetric decryption
+        # TODO: Desencriptar aqui
+        plain_pk = encrypted_private_key
+        private_key = self.get_private_key_serialized(plain_pk)
+        return private_key
 
     def encrypt_payload(self, payload):
         # Asymmetric encryption
@@ -229,18 +254,6 @@ class JET:
             )
         )
         return bytes_to_encoded_string(encrypted_payload, self.encoding)
-
-    def decrypt_private_key(self, encrypted_private_key, derived_key):
-        # Symmetric decryption
-        private_key = serialization.load_der_private_key(
-            encoded_string_to_bytes(encrypted_private_key),
-            password = derived_key
-            # password = None
-        )
-
-        if not isinstance(private_key, rsa.RSAPrivateKey):
-            raise JETException
-        return private_key
 
     def decrypt_payload(self, encrypted_encoded_payload, private_key):
         # Asymmetric decryption
