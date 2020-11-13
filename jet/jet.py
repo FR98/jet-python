@@ -4,6 +4,7 @@ import hmac
 from backports.pbkdf2 import pbkdf2_hmac
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
+# from Crypto.Cipher import AES
 
 from jet.exceptions import JETException
 from jet.utils import (
@@ -94,7 +95,9 @@ class JET:
         payload['rnd'] = self.random_string()
         encrypted_payload = self.encrypt_payload(payload)
         encrypted_private_key = self.encrypt_private_key(derived_key)
-
+        
+        print('encrypted_private_key: \n',encrypted_private_key)
+        
         unsigned_token = '{encoded_meta}.{encrypted_payload}.{encrypted_private_key}.{salt}'.format(
             encoded_meta = encode_dict(meta, self.encoding),
             encrypted_payload = encrypted_payload,
@@ -115,7 +118,7 @@ class JET:
 
         encoded_meta, encrypted_encoded_payload, encrypted_private_key, encoded_salt, sign = token.split('.')
         salt = encoded_string_to_bytes(encoded_salt)
-
+        print('SALT: ', salt)
         meta = decode_dict(encoded_meta, self.encoding)
         derived_key = pbkdf2_hmac(
             self.alg,
@@ -154,7 +157,7 @@ class JET:
         )
 
         calculated_sign = hmac_sha256(unsigned_token, self.SECRET, self.encoding)
-
+        print ('CALCULATED_SIGN: ',calculated_sign)
         if hmac.compare_digest(sign, calculated_sign):
             return True
         return False
@@ -202,17 +205,6 @@ class JET:
             self.encoding
         )
 
-    def encrypt_private_key(self, derived_key):
-        # Symmetric encryption
-        return bytes_to_encoded_string(
-            self.private_key.private_bytes(
-                encoding = serialization.Encoding.DER,
-                format = serialization.PrivateFormat.PKCS8,
-                encryption_algorithm = serialization.BestAvailableEncryption(derived_key)
-                # encryption_algorithm = serialization.NoEncryption()
-            ),
-            self.encoding
-        )
 
     def encrypt_payload(self, payload):
         # Asymmetric encryption
@@ -230,12 +222,23 @@ class JET:
         )
         return bytes_to_encoded_string(encrypted_payload, self.encoding)
 
+    def encrypt_private_key(self, derived_key):
+        # Symmetric encryption
+        return bytes_to_encoded_string(
+            self.private_key.private_bytes(
+                encoding = serialization.Encoding.DER,
+                format = serialization.PrivateFormat.PKCS8,
+                # encryption_algorithm = serialization.BestAvailableEncryption(derived_key)
+                encryption_algorithm = serialization.NoEncryption()
+            ),
+            self.encoding
+        )
     def decrypt_private_key(self, encrypted_private_key, derived_key):
         # Symmetric decryption
         private_key = serialization.load_der_private_key(
             encoded_string_to_bytes(encrypted_private_key),
-            password = derived_key
-            # password = None
+            # password = derived_key
+            password = None
         )
 
         if not isinstance(private_key, rsa.RSAPrivateKey):
@@ -243,6 +246,9 @@ class JET:
         return private_key
 
     def decrypt_payload(self, encrypted_encoded_payload, private_key):
+        print("encrypted_encoded_payload: \n",encrypted_encoded_payload)
+        print('encoded_string_to_bytes(encrypted_encoded_payload): ',encoded_string_to_bytes(encrypted_encoded_payload))
+        print('Decoded utf8: ',encrypted_encoded_payload.encode('utf8') )
         # Asymmetric decryption
         encoded_payload = private_key.decrypt(
             encoded_string_to_bytes(encrypted_encoded_payload),

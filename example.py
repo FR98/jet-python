@@ -1,20 +1,23 @@
 from jet import JET
 from jet.utils import hmac_sha256
 
-
+encoding = 'utf8'
 GLOBAL_JET = JET(
-    SECRET = 'my-secret-string'
+    SECRET = 'my-secret-string',
+    encoding=encoding
 )
 
-user_secret = hmac_sha256('user-password', 'user-password', 'ascii')
+user_secret = hmac_sha256('user-password', 'user-password', encoding)
 
 payload = {
     'id': 1,
     'message': "Hola"
 }
 
+print('User secret: ', user_secret)
+# print('PRIVATE KEY: ',GLOBAL_JET.encrypt_private_key()  )
 token = GLOBAL_JET.encrypt(user_secret, payload)
-print(token)
+print('TOKEN: \n',token, '\n')
 
 decrypted_meta, decrypted_payload = GLOBAL_JET.decrypt(user_secret, token)
 print()
